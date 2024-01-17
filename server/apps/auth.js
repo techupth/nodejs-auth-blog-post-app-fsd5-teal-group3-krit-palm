@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db } from "../utils/db";
+import { db } from "../utils/db.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 const authRouter = Router();
@@ -10,7 +10,7 @@ const usersCollection = db.collection("users");
 
 authRouter.post("/register", async (req, res) => {
   const newUser = { ...req.body };
-  const check = await collection
+  const check = await usersCollection
     .find({ username: req.body.username })
     .toArray();
   if (check.length) {
@@ -18,9 +18,9 @@ authRouter.post("/register", async (req, res) => {
       message: "username has been use",
     });
   }
-  const salt = await bcrypt.salt(10);
+  const salt = await bcrypt.genSalt(10);
 
-  newUser.username = await bcrypt.hash(newUser.username, salt);
+  newUser.password = await bcrypt.hash(newUser.password, salt);
 
   const result = await usersCollection.insertOne(newUser);
 
@@ -36,6 +36,7 @@ authRouter.post("/login", async (req, res) => {
   const checkUser = await usersCollection
     .find({ username: loginUser.username })
     .toArray();
+  console.log(checkUser);
   if (!checkUser.length) {
     return res.status(400).json({
       message: "username or password not found",
@@ -43,7 +44,7 @@ authRouter.post("/login", async (req, res) => {
   }
   const isValidPassword = await bcrypt.compare(
     loginUser.password,
-    checkUser.password
+    checkUser[0].password
   );
   if (!isValidPassword) {
     return res.status(400).json({
@@ -52,7 +53,7 @@ authRouter.post("/login", async (req, res) => {
   }
   const token = jwt.sign(
     {
-      id: checkUser.id,
+      id: checkUser._id,
       firstName: checkUser.firstName,
       lastName: checkUser.lastName,
     },
